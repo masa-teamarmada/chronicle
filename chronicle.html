@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chronicle">
+<meta name="theme-color" content="#0E0F0F">
+<title>Chronicle</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0E0F0F;
+    --bg2: #141514;
+    --bg3: #1A1A18;
+    --border: #2A2520;
+    --border2: #1E1E1C;
+    --text: #E8E3D8;
+    --text2: #D8D3C8;
+    --text3: #6B6560;
+    --text4: #4A4540;
+    --text5: #3A3530;
+    --gold: #C8A86B;
+    --gold2: #E8C88B;
+    --serif: 'Noto Serif JP', 'Hiragino Mincho ProN', serif;
+    --mono: 'DM Mono', 'Courier New', monospace;
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  #app {
+    max-width: 430px;
+    margin: 0 auto;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* grain overlay */
+  #app::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    padding: calc(16px + var(--safe-top)) 20px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  .logo { font-family: var(--mono); font-size: 11px; letter-spacing: 0.25em; color: var(--text3); text-transform: uppercase; }
+  .logo-sub { font-family: var(--mono); font-size: 9px; color: var(--text5); margin-top: 3px; }
+  .header-right { font-family: var(--mono); font-size: 10px; color: var(--text4); text-align: right; line-height: 1.6; }
+
+  /* ── NAV ── */
+  #nav {
+    display: flex;
+    gap: 2px;
+    padding: 12px 20px 0;
+    flex-shrink: 0;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 9px 0;
+    background: transparent;
+    color: var(--text3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-btn.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  /* ── CONTENT ── */
+  #content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    padding-bottom: calc(24px + var(--safe-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+  #content::-webkit-scrollbar { display: none; }
+
+  /* ── LOG INPUT ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  textarea {
+    width: 100%;
+    min-height: 170px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.85;
+    padding: 16px;
+    font-family: var(--serif);
+    resize: none;
+    outline: none;
+    caret-color: var(--gold);
+    -webkit-appearance: none;
+    margin-bottom: 14px;
+    display: block;
+  }
+  textarea::placeholder { color: var(--text5); line-height: 1.85; }
+  textarea:focus { border-color: #3A3530; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text4);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+
+  .tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .tag-btn {
+    padding: 5px 13px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text4);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--serif);
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tag-btn.selected {
+    border-color: var(--tag-color);
+    background: color-mix(in srgb, var(--tag-color) 15%, transparent);
+    color: var(--tag-color);
+  }
+
+  .moods {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .mood-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    font-size: 19px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mood-btn.selected {
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 15%, transparent);
+  }
+
+  .save-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--bg3);
+    color: var(--text5);
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    font-family: var(--mono);
+    cursor: default;
+    transition: all 0.25s;
+  }
+  .save-btn.ready {
+    background: var(--gold);
+    color: var(--bg);
+    cursor: pointer;
+  }
+
+  .submit-hint {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text5);
+    font-family: var(--mono);
+  }
+
+  /* success state */
+  .success-screen {
+    display: none;
+    text-align: center;
+    padding: 80px 0;
+    animation: fadeIn 0.3s ease;
+  }
+  .success-screen.show { display: block; }
+  .success-icon { font-size: 36px; margin-bottom: 16px; }
+  .success-text { font-size: 13px; color: var(--text3); letter-spacing: 0.12em; }
+
+  /* ── LOG LIST ── */
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+
+  .filter-btn {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text4);
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: var(--mono);
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .filter-btn.active {
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 15%, transparent);
+    color: var(--gold);
+  }
+  .filter-btn.tag-active {
+    border-color: var(--tag-color);
+    background: color-mix(in srgb, var(--tag-color) 15%, transparent);
+    color: var(--tag-color);
+  }
+
+  .date-group { margin-bottom: 28px; }
+  .date-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text4);
+    letter-spacing: 0.2em;
+    border-bottom: 1px solid var(--border2);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+
+  .log-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    animation: slideIn 0.2s ease;
+  }
+  .log-text {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text2);
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+  }
+  .log-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .log-meta-left { display: flex; gap: 8px; align-items: center; }
+  .log-tag-label { font-size: 10px; font-family: var(--mono); }
+  .log-location { font-size: 10px; color: var(--text4); }
+  .log-meta-right { display: flex; gap: 6px; align-items: center; }
+  .log-time { font-size: 10px; color: var(--text5); font-family: var(--mono); }
+
+  /* ── COMPASS ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr 1px 1fr;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .stat-divider { background: var(--border); }
+  .stat-num { font-size: 28px; color: var(--gold); font-family: var(--mono); line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 10px; color: var(--text4); }
+
+  .dist-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .dist-label { font-size: 11px; width: 52px; flex-shrink: 0; }
+  .dist-bar-wrap { flex: 1; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .dist-bar { height: 100%; border-radius: 3px; transition: width 0.7s cubic-bezier(0.16,1,0.3,1); }
+  .dist-count { font-size: 10px; color: var(--text4); font-family: var(--mono); width: 16px; text-align: right; }
+
+  .goal-layer-btns { display: flex; gap: 4px; }
+  .goal-layer-btn {
+    padding: 3px 9px;
+    font-size: 10px;
+    font-family: var(--mono);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text4);
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .goal-layer-btn.active {
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 15%, transparent);
+    color: var(--gold);
+  }
+
+  .goal-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .goal-text { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 10px; }
+  .goal-bar-row { display: flex; align-items: center; gap: 10px; }
+  .goal-bar-wrap { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .goal-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--gold), var(--gold2)); }
+  .goal-pct { font-size: 11px; color: var(--gold); font-family: var(--mono); min-width: 34px; text-align: right; }
+
+  .philosophy-placeholder {
+    margin-top: 24px;
+    padding: 18px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    text-align: center;
+  }
+  .philosophy-icon { font-size: 20px; margin-bottom: 8px; }
+  .philosophy-text { font-size: 12px; color: var(--text4); line-height: 1.8; }
+  .philosophy-sub { font-size: 10px; color: var(--text5); margin-top: 4px; }
+
+  /* Row labels section */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div>
+      <div class="logo">Chronicle</div>
+      <div class="logo-sub">MASA × KIYO</div>
+    </div>
+    <div class="header-right">
+      <div id="today-date"></div>
+      <div id="entry-count"></div>
+    </div>
+  </div>
+
+  <div id="nav">
+    <button class="nav-btn active" data-screen="log" onclick="switchScreen('log')">＋ 刻む</button>
+    <button class="nav-btn" data-screen="list" onclick="switchScreen('list')">ログ</button>
+    <button class="nav-btn" data-screen="compass" onclick="switchScreen('compass')">コンパス</button>
+  </div>
+
+  <div id="content">
+
+    <!-- ── LOG INPUT ── -->
+    <div id="screen-log" class="screen active">
+      <div id="log-form">
+        <textarea id="log-textarea" placeholder="今この瞬間に、何かを刻む。&#10;&#10;出来事、気づき、感情、問い——なんでもいい。"></textarea>
+
+        <div class="section-label">CATEGORY</div>
+        <div class="tags" id="tag-buttons"></div>
+
+        <div class="section-label">MOOD</div>
+        <div class="moods" id="mood-buttons"></div>
+
+        <button class="save-btn" id="save-btn" onclick="saveLog()">INSCRIBE</button>
+        <div class="submit-hint">長押しエンターでも送信</div>
+      </div>
+      <div class="success-screen" id="success-screen">
+        <div class="success-icon">✦</div>
+        <div class="success-text">刻まれました</div>
+      </div>
+    </div>
+
+    <!-- ── LOG LIST ── -->
+    <div id="screen-list" class="screen">
+      <div class="filter-row" id="filter-row"></div>
+      <div id="log-list-body"></div>
+    </div>
+
+    <!-- ── COMPASS ── -->
+    <div id="screen-compass" class="screen">
+      <div class="stats-row">
+        <div>
+          <div class="stat-num" id="stat-logs">0</div>
+          <div class="stat-label">今週のログ</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div>
+          <div class="stat-num" id="stat-days">0</div>
+          <div class="stat-label">記録日数</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div>
+          <div class="stat-num" id="stat-streak">0</div>
+          <div class="stat-label">連続日数</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div class="section-label" style="margin-bottom:10px">LOG DISTRIBUTION</div>
+        <div id="dist-bars"></div>
+      </div>
+
+      <div>
+        <div class="section-header">
+          <div class="section-label" style="margin:0">GOALS</div>
+          <div class="goal-layer-btns">
+            <button class="goal-layer-btn active" onclick="setGoalLayer('month',this)">月次</button>
+            <button class="goal-layer-btn" onclick="setGoalLayer('year',this)">年次</button>
+            <button class="goal-layer-btn" onclick="setGoalLayer('5year',this)">5年</button>
+          </div>
+        </div>
+        <div id="goal-list"></div>
+      </div>
+
+      <div class="philosophy-placeholder">
+        <div class="philosophy-icon">◎</div>
+        <div class="philosophy-text">哲学層 — 近日公開</div>
+        <div class="philosophy-sub">ありたい姿・人生設計・終活メモ</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────
+const TAGS = [
+  { id:"work",  label:"仕事", emoji:"⚡", color:"#4A7FA5" },
+  { id:"learn", label:"学び", emoji:"📖", color:"#5B8A6F" },
+  { id:"life",  label:"体験", emoji:"✦",  color:"#A0785A" },
+  { id:"think", label:"思考", emoji:"◎",  color:"#7A6A9A" },
+  { id:"health",label:"健康", emoji:"◈",  color:"#5A8A7A" },
+  { id:"rel",   label:"関係", emoji:"♡",  color:"#A05A7A" },
+];
+
+const MOODS = ["😴","😐","🙂","😄","🔥"];
+
+const GOALS = [
+  { id:1, text:"2027年までに都内コワーキングスペースを開設する", layer:"5year", progress:15 },
+  { id:2, text:"AMD OSを60社/年のDTSU支援インフラに育てる",    layer:"5year", progress:20 },
+  { id:3, text:"FY2025 売上5,000万超え",                        layer:"year",  progress:86 },
+  { id:4, text:"AMD OS MVP 完全稼働",                           layer:"year",  progress:75 },
+  { id:5, text:"週3回以上の運動習慣",                           layer:"month", progress:45 },
+  { id:6, text:"Chronicle の日次ログ習慣を定着させる",          layer:"month", progress:10 },
+];
+
+// ── STATE ────────────────────────────────────────────────
+let logs = JSON.parse(localStorage.getItem('chronicle_logs') || 'null') || [
+  { id:1, text:"JCのPoCで熱分解温度のデータが想定より10%良かった。方向性は正しい。", tag:"work",  mood:3, ts: Date.now()-1000*60*30,   loc:null },
+  { id:2, text:"Anthropic の Constitutional AI の論文を読んだ。LLMの設計思想が自分のOS設計に近くて興奮した。", tag:"learn", mood:4, ts: Date.now()-1000*60*60*3,  loc:null },
+  { id:3, text:"きよと夜に散歩。つくばの空気が好きだと改めて思った。", tag:"life",  mood:4, ts: Date.now()-1000*60*60*8,  loc:"つくば市" },
+  { id:4, text:"「種としてどうあるべきか」という問いが今日も頭から離れない。答えは出ないが、問い続けることに意味がある気がしている。", tag:"think", mood:2, ts: Date.now()-1000*60*60*24, loc:null },
+  { id:5, text:"AMD OS のMS revisionシステムがようやく設計完了。実装フェーズへ。", tag:"work",  mood:3, ts: Date.now()-1000*60*60*28, loc:null },
+];
+
+let selectedTag  = null;
+let selectedMood = null;
+let currentFilter = null;
+let currentGoalLayer = 'month';
+
+function saveLogs() {
+  localStorage.setItem('chronicle_logs', JSON.stringify(logs));
+}
+
+// ── UTILS ────────────────────────────────────────────────
+function relativeTime(ts) {
+  const diff = Date.now() - ts;
+  const min  = Math.floor(diff / 60000);
+  if (min < 1)  return "たった今";
+  if (min < 60) return `${min}分前`;
+  const h = Math.floor(min / 60);
+  if (h < 24)   return `${h}時間前`;
+  const d = Math.floor(h / 24);
+  return `${d}日前`;
+}
+
+function dateLabel(ts) {
+  return new Date(ts).toLocaleDateString('ja-JP', {
+    year:'numeric', month:'long', day:'numeric', weekday:'short'
+  });
+}
+
+function todayStr() {
+  return new Date().toLocaleDateString('ja-JP', {
+    year:'numeric', month:'long', day:'numeric', weekday:'short'
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────
+document.getElementById('today-date').textContent = todayStr();
+
+// Tag buttons
+const tagWrap = document.getElementById('tag-buttons');
+TAGS.forEach(t => {
+  const btn = document.createElement('button');
+  btn.className = 'tag-btn';
+  btn.style.setProperty('--tag-color', t.color);
+  btn.textContent = `${t.emoji} ${t.label}`;
+  btn.onclick = () => {
+    selectedTag = selectedTag === t.id ? null : t.id;
+    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+    if (selectedTag) btn.classList.add('selected');
+  };
+  tagWrap.appendChild(btn);
+});
+
+// Mood buttons
+const moodWrap = document.getElementById('mood-buttons');
+MOODS.forEach((m, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'mood-btn';
+  btn.textContent = m;
+  btn.onclick = () => {
+    selectedMood = selectedMood === i ? null : i;
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    if (selectedMood !== null) btn.classList.add('selected');
+  };
+  moodWrap.appendChild(btn);
+});
+
+// Textarea -> save button state
+const ta  = document.getElementById('log-textarea');
+const btn = document.getElementById('save-btn');
+ta.addEventListener('input', () => {
+  btn.classList.toggle('ready', ta.value.trim().length > 0);
+});
+
+// Filter row
+function buildFilterRow() {
+  const row = document.getElementById('filter-row');
+  row.innerHTML = '';
+  const all = document.createElement('button');
+  all.className = 'filter-btn' + (!currentFilter ? ' active' : '');
+  all.textContent = 'ALL';
+  all.onclick = () => { currentFilter = null; buildFilterRow(); renderList(); };
+  row.appendChild(all);
+  TAGS.forEach(t => {
+    const fb = document.createElement('button');
+    fb.className = 'filter-btn' + (currentFilter === t.id ? ' tag-active' : '');
+    fb.style.setProperty('--tag-color', t.color);
+    fb.textContent = t.emoji;
+    fb.onclick = () => {
+      currentFilter = currentFilter === t.id ? null : t.id;
+      buildFilterRow();
+      renderList();
+    };
+    row.appendChild(fb);
+  });
+}
+
+// ── RENDER LIST ──────────────────────────────────────────
+function renderList() {
+  const body = document.getElementById('log-list-body');
+  const filtered = currentFilter ? logs.filter(l => l.tag === currentFilter) : [...logs];
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text5);font-size:12px">まだログがありません</div>';
+    return;
+  }
+
+  // group by date
+  const groups = {};
+  filtered.forEach(l => {
+    const k = dateLabel(l.ts);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(l);
+  });
+
+  body.innerHTML = Object.entries(groups).map(([date, items]) => `
+    <div class="date-group">
+      <div class="date-label">${date}</div>
+      ${items.map(l => {
+        const tInfo = TAGS.find(t => t.id === l.tag);
+        return `
+        <div class="log-card" style="border-left-color:${tInfo ? tInfo.color : 'var(--border)'}">
+          <div class="log-text">${escHtml(l.text)}</div>
+          <div class="log-meta">
+            <div class="log-meta-left">
+              ${tInfo ? `<span class="log-tag-label" style="color:${tInfo.color}">${tInfo.emoji} ${tInfo.label}</span>` : ''}
+              ${l.loc ? `<span class="log-location">📍 ${escHtml(l.loc)}</span>` : ''}
+            </div>
+            <div class="log-meta-right">
+              ${l.mood !== null && l.mood !== undefined ? `<span>${MOODS[l.mood]}</span>` : ''}
+              <span class="log-time">${relativeTime(l.ts)}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── RENDER COMPASS ───────────────────────────────────────
+function renderCompass() {
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const weekLogs = logs.filter(l => Date.now() - l.ts < week);
+  const days = new Set(weekLogs.map(l => dateLabel(l.ts))).size;
+
+  // streak
+  let streak = 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const dStr = d.toLocaleDateString('ja-JP');
+    const found = logs.some(l => new Date(l.ts).toLocaleDateString('ja-JP') === dStr);
+    if (found) streak++;
+    else if (i > 0) break;
+  }
+
+  document.getElementById('stat-logs').textContent  = weekLogs.length;
+  document.getElementById('stat-days').textContent  = days;
+  document.getElementById('stat-streak').textContent = streak;
+
+  // distribution
+  const counts = {};
+  TAGS.forEach(t => counts[t.id] = 0);
+  logs.forEach(l => { if (l.tag) counts[l.tag]++; });
+  const max = Math.max(...Object.values(counts), 1);
+
+  document.getElementById('dist-bars').innerHTML = TAGS.map(t => `
+    <div class="dist-row">
+      <div class="dist-label" style="color:${t.color}">${t.emoji} ${t.label}</div>
+      <div class="dist-bar-wrap">
+        <div class="dist-bar" style="width:${(counts[t.id]/max)*100}%;background:${t.color}"></div>
+      </div>
+      <div class="dist-count">${counts[t.id]}</div>
+    </div>
+  `).join('');
+
+  renderGoals();
+}
+
+function renderGoals() {
+  const filtered = GOALS.filter(g => g.layer === currentGoalLayer);
+  document.getElementById('goal-list').innerHTML = filtered.map(g => `
+    <div class="goal-card">
+      <div class="goal-text">${escHtml(g.text)}</div>
+      <div class="goal-bar-row">
+        <div class="goal-bar-wrap">
+          <div class="goal-bar" style="width:${g.progress}%"></div>
+        </div>
+        <div class="goal-pct">${g.progress}%</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setGoalLayer(layer, el) {
+  currentGoalLayer = layer;
+  document.querySelectorAll('.goal-layer-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderGoals();
+}
+
+// ── SAVE LOG ─────────────────────────────────────────────
+function saveLog() {
+  const text = ta.value.trim();
+  if (!text) return;
+
+  const entry = {
+    id:   Date.now(),
+    text: text,
+    tag:  selectedTag,
+    mood: selectedMood,
+    ts:   Date.now(),
+    loc:  null,
+  };
+
+  // try geolocation (non-blocking)
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => { entry.loc = `${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}`; },
+      () => {}
+    );
+  }
+
+  logs.unshift(entry);
+  saveLogs();
+  updateEntryCount();
+
+  // reset form
+  ta.value = '';
+  selectedTag  = null;
+  selectedMood = null;
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.remove('ready');
+
+  // success flash
+  document.getElementById('log-form').style.display = 'none';
+  const suc = document.getElementById('success-screen');
+  suc.classList.add('show');
+  setTimeout(() => {
+    suc.classList.remove('show');
+    document.getElementById('log-form').style.display = 'block';
+    switchScreen('list');
+  }, 1400);
+}
+
+function updateEntryCount() {
+  document.getElementById('entry-count').textContent = `${logs.length} entries`;
+}
+updateEntryCount();
+
+// ── SCREEN SWITCH ────────────────────────────────────────
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+  if (name === 'list')    { buildFilterRow(); renderList(); }
+  if (name === 'compass') { renderCompass(); }
+  // scroll to top
+  document.getElementById('content').scrollTop = 0;
+}
+</script>
+</body>
+</html>
