@@ -379,6 +379,19 @@
 </head>
 <body>
 <div id="app">
+  <!-- loading bar -->
+  <div id="loading-bar" style="
+    position:fixed;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--gold),var(--gold2));
+    opacity:0;transition:opacity 0.3s;z-index:1000;
+  "></div>
+  <!-- toast -->
+  <div id="toast" style="
+    position:fixed;bottom:calc(20px + var(--safe-bottom));left:50%;transform:translateX(-50%);
+    padding:10px 20px;border-radius:20px;font-size:12px;font-family:var(--mono);
+    color:var(--text);opacity:0;transition:opacity 0.3s;z-index:1000;
+    white-space:nowrap;pointer-events:none;
+  "></div>
   <div id="header">
     <div>
       <div class="logo">Chronicle</div>
@@ -471,6 +484,21 @@
 </div>
 
 <script>
+// ── CONFIG ───────────────────────────────────────────────
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxdCkyEGMNaip9rhew65mUb6xGKM62Cb_vRyzKr5VA_BlvK0T5mDkVXzvWQm7SM9Lch/exec';
+const MEMBER_ID = 'masa';
+
+async function gasPost(action, payload = {}) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action, payload }),
+  });
+  const json = await res.json();
+  if (json.status !== 'ok') throw new Error(json.message || 'API error');
+  return json.data;
+}
+
 // ── DATA ─────────────────────────────────────────────────
 const TAGS = [
   { id:"work",  label:"仕事", emoji:"⚡", color:"#4A7FA5" },
@@ -483,28 +511,56 @@ const TAGS = [
 
 const MOODS = ["😴","😐","🙂","😄","🔥"];
 
-const GOALS = [
-  { id:1, text:"2027年までに都内コワーキングスペースを開設する", layer:"5year", progress:15 },
-  { id:2, text:"AMD OSを60社/年のDTSU支援インフラに育てる",    layer:"5year", progress:20 },
-  { id:3, text:"FY2025 売上5,000万超え",                        layer:"year",  progress:86 },
-  { id:4, text:"AMD OS MVP 完全稼働",                           layer:"year",  progress:75 },
-  { id:5, text:"週3回以上の運動習慣",                           layer:"month", progress:45 },
-  { id:6, text:"Chronicle の日次ログ習慣を定着させる",          layer:"month", progress:10 },
-];
+
 
 // ── STATE ────────────────────────────────────────────────
-let logs = JSON.parse(localStorage.getItem('chronicle_logs') || 'null') || [
-  { id:1, text:"JCのPoCで熱分解温度のデータが想定より10%良かった。方向性は正しい。", tag:"work",  mood:3, ts: Date.now()-1000*60*30,   loc:null },
-  { id:2, text:"Anthropic の Constitutional AI の論文を読んだ。LLMの設計思想が自分のOS設計に近くて興奮した。", tag:"learn", mood:4, ts: Date.now()-1000*60*60*3,  loc:null },
-  { id:3, text:"きよと夜に散歩。つくばの空気が好きだと改めて思った。", tag:"life",  mood:4, ts: Date.now()-1000*60*60*8,  loc:"つくば市" },
-  { id:4, text:"「種としてどうあるべきか」という問いが今日も頭から離れない。答えは出ないが、問い続けることに意味がある気がしている。", tag:"think", mood:2, ts: Date.now()-1000*60*60*24, loc:null },
-  { id:5, text:"AMD OS のMS revisionシステムがようやく設計完了。実装フェーズへ。", tag:"work",  mood:3, ts: Date.now()-1000*60*60*28, loc:null },
-];
-
+let logs = [];
+let goals = [];
 let selectedTag  = null;
 let selectedMood = null;
 let currentFilter = null;
 let currentGoalLayer = 'month';
+let isLoading = false;
+
+function setLoading(on) {
+  isLoading = on;
+  document.getElementById('loading-bar').style.opacity = on ? '1' : '0';
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#5A2A2A' : '#2A3A2A';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2500);
+}
+
+async function loadLogs() {
+  try {
+    setLoading(true);
+    const data = await gasPost('log.list', { memberId: MEMBER_ID });
+    logs = (data || []).map(l => ({
+      ...l,
+      ts: new Date(l.ts).getTime() || Date.now(),
+    }));
+    updateEntryCount();
+  } catch(e) {
+    showToast('ログの取得に失敗しました', true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function loadGoals() {
+  try {
+    const data = await gasPost('goal.list', { memberId: MEMBER_ID });
+    goals = data || [];
+  } catch(e) {
+    goals = [];
+  }
+}
+
+function saveLogs() { /* GAS が source of truth */ }
 
 function saveLogs() {
   localStorage.setItem('chronicle_logs', JSON.stringify(logs));
@@ -683,7 +739,12 @@ function renderCompass() {
 }
 
 function renderGoals() {
-  const filtered = GOALS.filter(g => g.layer === currentGoalLayer);
+  const filtered = goals.filter(g => g.layer === currentGoalLayer);
+  if (filtered.length === 0) {
+    document.getElementById('goal-list').innerHTML =
+      '<div style="text-align:center;padding:30px 0;color:var(--text5);font-size:12px">目標がまだありません</div>';
+    return;
+  }
   document.getElementById('goal-list').innerHTML = filtered.map(g => `
     <div class="goal-card">
       <div class="goal-text">${escHtml(g.text)}</div>
@@ -705,32 +766,22 @@ function setGoalLayer(layer, el) {
 }
 
 // ── SAVE LOG ─────────────────────────────────────────────
-function saveLog() {
+async function saveLog() {
   const text = ta.value.trim();
-  if (!text) return;
+  if (!text || isLoading) return;
 
-  const entry = {
-    id:   Date.now(),
-    text: text,
-    tag:  selectedTag,
-    mood: selectedMood,
-    ts:   Date.now(),
-    loc:  null,
+  const nowTs = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+
+  const payload = {
+    text,
+    tag:      selectedTag,
+    mood:     selectedMood,
+    ts:       nowTs,
+    loc:      null,
+    memberId: MEMBER_ID,
   };
 
-  // try geolocation (non-blocking)
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => { entry.loc = `${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}`; },
-      () => {}
-    );
-  }
-
-  logs.unshift(entry);
-  saveLogs();
-  updateEntryCount();
-
-  // reset form
+  // reset form immediately for UX
   ta.value = '';
   selectedTag  = null;
   selectedMood = null;
@@ -742,11 +793,23 @@ function saveLog() {
   document.getElementById('log-form').style.display = 'none';
   const suc = document.getElementById('success-screen');
   suc.classList.add('show');
-  setTimeout(() => {
-    suc.classList.remove('show');
-    document.getElementById('log-form').style.display = 'block';
-    switchScreen('list');
-  }, 1400);
+
+  try {
+    setLoading(true);
+    const saved = await gasPost('log.create', payload);
+    logs.unshift({ ...saved, ts: new Date(saved.ts).getTime() || Date.now() });
+    updateEntryCount();
+    showToast('刻まれました');
+  } catch(e) {
+    showToast('保存に失敗しました', true);
+  } finally {
+    setLoading(false);
+    setTimeout(() => {
+      suc.classList.remove('show');
+      document.getElementById('log-form').style.display = 'block';
+      switchScreen('list');
+    }, 1400);
+  }
 }
 
 function updateEntryCount() {
@@ -761,11 +824,16 @@ function switchScreen(name) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.screen === name);
   });
-  if (name === 'list')    { buildFilterRow(); renderList(); }
-  if (name === 'compass') { renderCompass(); }
-  // scroll to top
+  if (name === 'list')    { buildFilterRow(); loadLogs().then(renderList); }
+  if (name === 'compass') { Promise.all([loadLogs(), loadGoals()]).then(renderCompass); }
   document.getElementById('content').scrollTop = 0;
 }
+
+// ── INIT ─────────────────────────────────────────────────
+(async () => {
+  await loadLogs();
+  updateEntryCount();
+})();
 </script>
 </body>
 </html>
