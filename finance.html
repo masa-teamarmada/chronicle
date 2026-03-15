@@ -7,8 +7,10 @@
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/masa-teamarmada/chronicle/main/icon_finance.png">
 <title>Chronicle ¥</title>
 <script>
+var base = 'https://script.google.com/a/macros/team-armada.jp/s/AKfycby1a23C4SDhvCsag2TwvTEwgGsEh5zpaJlbV1O1lxgW-8AZgF1gnrzYk-DwNhWYZYTj/exec';
+var isMobile = /iPhone|Android|iPad|Mobile/i.test(navigator.userAgent);
 setTimeout(function(){
-  window.location.href='https://script.google.com/a/macros/team-armada.jp/s/AKfycby1a23C4SDhvCsag2TwvTEwgGsEh5zpaJlbV1O1lxgW-8AZgF1gnrzYk-DwNhWYZYTj/exec?page=finance';
+  window.location.href = isMobile ? base + '?page=finance' : base;
 }, 300);
 </script>
 </head>
